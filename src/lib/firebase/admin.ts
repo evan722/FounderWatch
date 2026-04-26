@@ -2,7 +2,12 @@ import * as admin from "firebase-admin";
 
 const projectId = process.env.FIREBASE_PROJECT_ID;
 const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+
+// Aggressively clean the private key (handles quotes, literal \n, and actual newlines)
+const rawKey = process.env.FIREBASE_PRIVATE_KEY || "";
+const privateKey = rawKey
+  .replace(/^"|"$/g, "") // Remove wrapping double quotes
+  .replace(/\\n/g, "\n"); // Convert literal \n to actual newlines
 
 if (!admin.apps.length) {
   if (projectId && clientEmail && privateKey) {

@@ -3,23 +3,21 @@
 ## Environment Variables
 
 ```bash
-# Clay
-CLAY_WEBHOOK_URL=...
+npm run dev
+```
 
-# Optional scheduled LinkedIn monitor (Proxycurl)
-PROXYCURL_API_KEY=...
-CRON_SECRET=...
+## Environment Variables
 
-# AI + Email
-OPENAI_API_KEY=...
-RESEND_API_KEY=...
+Create `.env.local` with:
 
-# Firebase Admin
+```bash
+PROXYCURL_API_KEY=your_proxycurl_key
+CRON_SECRET=your_random_secret
+OPENAI_API_KEY=your_openai_key
+RESEND_API_KEY=your_resend_key
 FIREBASE_PROJECT_ID=...
 FIREBASE_CLIENT_EMAIL=...
 FIREBASE_PRIVATE_KEY=...
-
-# Firebase Client
 NEXT_PUBLIC_FIREBASE_API_KEY=...
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
@@ -28,9 +26,15 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
 NEXT_PUBLIC_FIREBASE_APP_ID=...
 ```
 
-## Workflows
+## Automated Monitoring (Clay-free)
 
-- Adding a founder pushes data to Firestore and forwards a webhook payload to Clay.
-- Clay can call `/api/signals` to ingest updates into `founders/{id}/signals`.
-- Founder profile auto-refreshes signals periodically.
-- Dashboard supports deleting founders.
+- Founders are stored in Firestore.
+- Vercel Cron calls `/api/cron/monitor` daily at `00:00 UTC`.
+- The monitor fetches LinkedIn snapshots from Proxycurl.
+- If role/company changed, it writes a signal, scores with OpenAI, updates founder fields, and sends high-priority alerts via Resend.
+
+You can test manually:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://<your-domain>/api/cron/monitor
+```

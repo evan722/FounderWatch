@@ -79,19 +79,12 @@ export async function POST(req: Request) {
 
     // 4) Immediate alert for high score signals
     if (score >= 7) {
-      const founderData = founderDoc.data() || {};
-      const founderName = founderData.name || "Unknown";
-      const recipients = Array.isArray(founderData.assigned_emails)
-        ? founderData.assigned_emails.filter((email: unknown): email is string => typeof email === "string")
-        : [];
-
+      const founderName = founderDoc.data()?.name || "Unknown";
       await sendImmediateAlert({
-        founderId: normalized.founderId,
         founderName,
         type: normalized.type,
         description: normalized.description,
         score,
-        recipients,
       });
       console.log(`[ALERT] Immediate email for ${founderName} (score=${score})`);
     }
