@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { scoreSignal } from "@/lib/openai";
 import { sendChangeAlert } from "@/lib/resend";
-import { fetchLinkedInSnapshot } from "@/lib/proxycurl";
+import { fetchLinkedInSnapshot } from "@/lib/apify";
 
 function isLinkedInUrl(url: string): boolean {
   return /linkedin\.com\/in\//i.test(url);
@@ -122,7 +122,7 @@ export async function GET(req: Request) {
         const description = changes.join(". ");
 
         // ── Score with GPT-4o ────────────────────────────────────────────────
-        const score = await scoreSignal(description, "Proxycurl LinkedIn Monitor");
+        const score = await scoreSignal(description, "Apify LinkedIn Monitor");
 
         // ── Save signal to Firestore ─────────────────────────────────────────
         await founderDoc.ref.collection("signals").add({
@@ -130,7 +130,7 @@ export async function GET(req: Request) {
           type: "linkedin_update",
           description,
           relevance_score: score,
-          source: "Proxycurl",
+          source: "Apify",
           created_at: new Date(),
         });
 
@@ -160,7 +160,7 @@ export async function GET(req: Request) {
               description,
               score,
               recipients,
-              source: "Proxycurl LinkedIn Monitor",
+              source: "Apify LinkedIn Monitor",
             });
             results.emailsSent += 1;
             console.log(

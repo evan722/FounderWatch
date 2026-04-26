@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
-import { fetchLinkedInSnapshot } from "@/lib/proxycurl";
+import { fetchLinkedInSnapshot } from "@/lib/apify";
 
 /**
  * POST /api/founders/enrich
  *
- * Fetches the current LinkedIn snapshot via Proxycurl and stores it on the
+ * Fetches the current LinkedIn snapshot via Apify and stores it on the
  * founder document as the baseline for future change detection.
  *
  * Body: { founderId: string }
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
     await founderRef.update(updateData);
 
-    console.log(`[ENRICH] Baseline stored for founder ${founderId}:`, updateData);
+    console.log(`[ENRICH] Baseline stored (via Apify) for founder ${founderId}:`, updateData);
 
     return NextResponse.json({ success: true, founderId, ...updateData });
   } catch (error) {
