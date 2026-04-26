@@ -71,7 +71,7 @@ export function AddFounderModal() {
         emailsList.push(user.email);
       }
 
-      const docRef = await addDoc(collection(db, "founders"), {
+      await addDoc(collection(db, "founders"), {
         ...values,
         assigned_emails: emailsList,
         owner_uid: user.uid,
@@ -80,17 +80,6 @@ export function AddFounderModal() {
         created_at: serverTimestamp(),
         updated_at: serverTimestamp(),
       });
-      
-      // Ping Clay Webhook in the background
-      fetch("/api/clay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          founderId: docRef.id,
-          name: values.name,
-          url: values.url,
-        }),
-      }).catch(err => console.error("Failed to push to Clay:", err));
       
       queryClient.invalidateQueries({ queryKey: ["founders"] });
       toast.success("Founder added successfully");
