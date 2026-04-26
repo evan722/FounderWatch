@@ -16,6 +16,7 @@ import {
   orderBy,
   addDoc,
   serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -30,9 +31,9 @@ interface Founder {
   role?: string;
   company?: string;
   priority?: string;
-  last_enriched_at?: any;
-  created_at?: any;
-  updated_at?: any;
+  last_enriched_at?: Timestamp | null;
+  created_at?: Timestamp | null;
+  updated_at?: Timestamp | null;
   assigned_emails?: string[];
   linkedin_photo_url?: string;
   headline?: string;
@@ -45,14 +46,14 @@ interface Signal {
   description: string;
   relevance_score?: number;
   source: string;
-  created_at: any;
+  created_at: Timestamp;
 }
 
 interface Note {
   id: string;
   author_name: string;
   content: string;
-  created_at: any;
+  created_at: Timestamp;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -110,8 +111,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
       const docRef = doc(db, "founders", params.id);
       const snapshot = await getDoc(docRef);
       if (!snapshot.exists()) return null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return { id: snapshot.id, ...snapshot.data() } as Founder;
+      return { id: snapshot.id, ...(snapshot.data() as Record<string, unknown>) } as unknown as Founder;
     },
     refetchInterval: 20000,
   });
@@ -125,8 +125,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
         orderBy("created_at", "desc")
       );
       const snapshot = await getDocs(q);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() })) as Signal[];
+      return snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) })) as unknown as Signal[];
     },
     refetchInterval: 20000,
   });
@@ -140,8 +139,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
         orderBy("created_at", "desc")
       );
       const snapshot = await getDocs(q);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() })) as Note[];
+      return snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) })) as unknown as Note[];
     },
   });
 
@@ -328,7 +326,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
                 <div className="font-medium flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   {founder.created_at
-                    ? format(founder.created_at.toDate(), "MMM d, yyyy")
+                    ? format(founder.created_at?.toDate(), "MMM d, yyyy")
                     : "Unknown"}
                 </div>
               </div>
@@ -337,7 +335,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
                 <div>
                   <span className="text-muted-foreground block mb-1">Last LinkedIn check</span>
                   <div className="text-xs text-muted-foreground/70">
-                    {format(founder.last_enriched_at.toDate(), "MMM d, yyyy h:mm a")}
+                    {founder.last_enriched_at ? format(founder.last_enriched_at.toDate(), "MMM d, yyyy h:mm a") : "Never"}
                   </div>
                 </div>
               )}
@@ -394,7 +392,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
                         <SourceBadge source={signal.source} />
                         <time className="text-xs text-muted-foreground ml-auto">
                           {signal.created_at
-                            ? format(signal.created_at.toDate(), "MMM d, yyyy h:mm a")
+                            ? format(signal.created_at?.toDate(), "MMM d, yyyy h:mm a")
                             : ""}
                         </time>
                       </div>
@@ -435,7 +433,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
                         <div className="font-medium text-sm">{note.author_name}</div>
                         <time className="text-xs text-muted-foreground">
                           {note.created_at
-                            ? format(note.created_at.toDate(), "MMM d, yyyy h:mm a")
+                            ? format(note.created_at?.toDate(), "MMM d, yyyy h:mm a")
                             : ""}
                         </time>
                       </div>

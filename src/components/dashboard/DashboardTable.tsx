@@ -16,7 +16,7 @@ import { format } from "date-fns";
 import { AddFounderModal } from "./AddFounderModal";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import React, { useState } from "react";
@@ -31,9 +31,9 @@ interface Founder {
   role?: string;
   company?: string;
   priority?: string;
-  last_enriched_at?: any;
-  created_at?: any;
-  updated_at?: any;
+  last_enriched_at?: Timestamp | null;
+  created_at?: Timestamp | null;
+  updated_at?: Timestamp | null;
   assigned_emails?: string[];
   linkedin_photo_url?: string;
   why?: string;
@@ -59,10 +59,10 @@ export function DashboardTable() {
 
       const snapshot = await getDocs(q);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = snapshot.docs.map((doc: any) => ({
+      const data = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data(),
-      })) as Founder[];
+        ...(doc.data() as Record<string, unknown>),
+      })) as unknown as Founder[];
 
       // Sort by most recently updated/created
       return data.sort((a, b) => {
@@ -263,7 +263,7 @@ export function DashboardTable() {
                         </div>
                         <div className="text-xs text-muted-foreground/50">
                           {founder.created_at
-                            ? `Added ${format(founder.created_at.toDate(), "MMM d, yyyy")}`
+                            ? `Added ${format(founder.created_at?.toDate(), "MMM d, yyyy")}`
                             : ""}
                         </div>
                       </div>
