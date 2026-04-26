@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { format } from "date-fns";
-import { ArrowLeft, Clock, MessageSquare, Globe, Twitter, Linkedin } from "lucide-react";
+import { ArrowLeft, Clock, MessageSquare, Globe, Link2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,6 +21,39 @@ import { db } from "@/lib/firebase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import React, { useState } from "react";
 import { toast } from "sonner";
+
+interface Founder {
+  id: string;
+  name: string;
+  linkedin_url?: string;
+  url?: string;
+  role?: string;
+  company?: string;
+  priority?: string;
+  last_enriched_at?: any;
+  created_at?: any;
+  updated_at?: any;
+  assigned_emails?: string[];
+  linkedin_photo_url?: string;
+  headline?: string;
+  why?: string;
+}
+
+interface Signal {
+  id: string;
+  type: string;
+  description: string;
+  relevance_score?: number;
+  source: string;
+  created_at: any;
+}
+
+interface Note {
+  id: string;
+  author_name: string;
+  content: string;
+  created_at: any;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,7 +111,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
       const snapshot = await getDoc(docRef);
       if (!snapshot.exists()) return null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return { id: snapshot.id, ...snapshot.data() } as any;
+      return { id: snapshot.id, ...snapshot.data() } as Founder;
     },
     refetchInterval: 20000,
   });
@@ -93,7 +126,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
       );
       const snapshot = await getDocs(q);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() })) as any[];
+      return snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() })) as Signal[];
     },
     refetchInterval: 20000,
   });
@@ -108,7 +141,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
       );
       const snapshot = await getDocs(q);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() })) as any[];
+      return snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() })) as Note[];
     },
   });
 
@@ -230,7 +263,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
             {/* Headline */}
             {founder.headline && (
               <p className="text-sm text-muted-foreground italic mb-4 leading-relaxed border-l-2 border-primary/30 pl-3">
-                "{founder.headline}"
+                &quot;{founder.headline}&quot;
               </p>
             )}
 
@@ -248,7 +281,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
                   })}
                   title="LinkedIn Profile"
                 >
-                  <Linkedin className="h-3.5 w-3.5" />
+                  <Globe className="h-3.5 w-3.5" />
                 </a>
               )}
               {founder.url && founder.linkedin_url && (
@@ -264,7 +297,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
                   title="Website / Twitter"
                 >
                   {/twitter\.com|x\.com/i.test(founder.url) ? (
-                    <Twitter className="h-3.5 w-3.5" />
+                    <Link2 className="h-3.5 w-3.5" />
                   ) : (
                     <Globe className="h-3.5 w-3.5" />
                   )}
@@ -339,7 +372,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
               </div>
             ) : (
               <div className="space-y-3">
-                {signals.map((signal: any) => (
+                {(signals as Signal[]).map((signal) => (
                   <div
                     key={signal.id}
                     className="flex gap-4 p-4 rounded-lg border border-border/50 bg-muted/10 hover:bg-muted/20 transition-colors"
@@ -393,7 +426,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {notes.map((note: any) => (
+                  {(notes as Note[]).map((note) => (
                     <div
                       key={note.id}
                       className="p-4 rounded-lg bg-muted/20 border border-border/50"

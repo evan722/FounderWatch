@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, MoreHorizontal, Trash2, Linkedin } from "lucide-react";
+import { Search, MoreHorizontal, Trash2, Globe } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { AddFounderModal } from "./AddFounderModal";
@@ -22,6 +22,22 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import React, { useState } from "react";
 import { toast } from "sonner";
 import Image from "next/image";
+
+interface Founder {
+  id: string;
+  name: string;
+  linkedin_url?: string;
+  url?: string;
+  role?: string;
+  company?: string;
+  priority?: string;
+  last_enriched_at?: any;
+  created_at?: any;
+  updated_at?: any;
+  assigned_emails?: string[];
+  linkedin_photo_url?: string;
+  why?: string;
+}
 
 export function DashboardTable() {
   const router = useRouter();
@@ -46,7 +62,7 @@ export function DashboardTable() {
       const data = snapshot.docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data(),
-      })) as any[];
+      })) as Founder[];
 
       // Sort by most recently updated/created
       return data.sort((a, b) => {
@@ -76,8 +92,7 @@ export function DashboardTable() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filteredFounders = founders?.filter((f: any) => {
+  const filteredFounders = (founders as Founder[])?.filter((f: Founder) => {
     const matchesPriority = priorityFilter === "all" || f.priority === priorityFilter;
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
@@ -157,7 +172,7 @@ export function DashboardTable() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredFounders?.map((founder: any) => (
+              filteredFounders?.map((founder: Founder) => (
                 <TableRow
                   key={founder.id}
                   className="group hover:bg-muted/30 transition-colors cursor-pointer"
@@ -186,7 +201,7 @@ export function DashboardTable() {
                         <div className="font-medium text-foreground truncate">{founder.name}</div>
                         {(founder.linkedin_url || founder.url) && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Linkedin className="h-3 w-3 flex-shrink-0" />
+                            <Globe className="h-3 w-3 flex-shrink-0" />
                             <span className="truncate max-w-[180px]">
                               {(founder.linkedin_url || founder.url)
                                 ?.replace("https://www.linkedin.com/in/", "")

@@ -177,7 +177,7 @@ export function AddFounderModal() {
           <DialogHeader>
             <DialogTitle>Add Founder</DialogTitle>
             <DialogDescription>
-              Paste their LinkedIn URL — we'll automatically track profile changes.
+              Paste their LinkedIn URL — we&apos;ll automatically track profile changes.
             </DialogDescription>
           </DialogHeader>
 
