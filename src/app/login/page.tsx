@@ -11,9 +11,9 @@ export default function LoginPage() {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       // AuthProvider will automatically redirect to "/" after sign in
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Google sign in error", error);
-      toast.error(error.message || "Failed to sign in");
+      toast.error(error instanceof Error ? error.message : "Failed to sign in");
     }
   };
 

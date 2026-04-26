@@ -3,7 +3,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, MoreHorizontal } from "lucide-react";
+import { Search, MoreHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { AddFounderModal } from "./AddFounderModal";
@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useState } from "react";
 
@@ -38,6 +37,7 @@ export function DashboardTable() {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       })) as any[];
       
       // Sort client-side to avoid needing a composite index immediately

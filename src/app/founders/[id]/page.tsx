@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { ArrowLeft, Clock, ExternalLink, MessageSquare, Globe } from "lucide-react";
+import { ArrowLeft, Clock, MessageSquare, Globe } from "lucide-react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { doc, getDoc, collection, getDocs, query, orderBy, addDoc, serverTimestamp } from "firebase/firestore";
@@ -25,6 +25,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
       const docRef = doc(db, "founders", params.id);
       const snapshot = await getDoc(docRef);
       if (!snapshot.exists()) return null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return { id: snapshot.id, ...snapshot.data() } as any;
     }
   });
@@ -35,6 +36,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
     queryFn: async () => {
       const q = query(collection(db, "founders", params.id, "signals"), orderBy("created_at", "desc"));
       const snapshot = await getDocs(q);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
     }
   });
@@ -45,6 +47,7 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
     queryFn: async () => {
       const q = query(collection(db, "founders", params.id, "notes"), orderBy("created_at", "desc"));
       const snapshot = await getDocs(q);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
     }
   });
