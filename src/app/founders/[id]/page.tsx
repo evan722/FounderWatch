@@ -27,7 +27,8 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
       if (!snapshot.exists()) return null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return { id: snapshot.id, ...snapshot.data() } as any;
-    }
+    },
+    refetchInterval: 20000
   });
 
   // Fetch Signals
@@ -38,7 +39,8 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
       const snapshot = await getDocs(q);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-    }
+    },
+    refetchInterval: 20000
   });
 
   // Fetch Notes
