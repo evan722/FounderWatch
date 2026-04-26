@@ -91,7 +91,7 @@ export function AddFounderModal() {
           url: values.url,
         }),
       }).catch(err => console.error("Failed to push to Clay:", err));
-      
+
       queryClient.invalidateQueries({ queryKey: ["founders"] });
       toast.success("Founder added successfully");
       setOpen(false);

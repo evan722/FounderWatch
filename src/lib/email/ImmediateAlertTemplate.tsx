@@ -2,6 +2,7 @@ import * as React from "react";
 import { Html, Head, Preview, Body, Container, Section, Text, Button } from "@react-email/components";
 
 interface ImmediateAlertTemplateProps {
+  founderId?: string;
   founderName: string;
   type: string;
   description: string;
@@ -9,6 +10,7 @@ interface ImmediateAlertTemplateProps {
 }
 
 export const ImmediateAlertTemplate: React.FC<Readonly<ImmediateAlertTemplateProps>> = ({
+  founderId,
   founderName,
   type,
   description,
@@ -24,13 +26,13 @@ export const ImmediateAlertTemplate: React.FC<Readonly<ImmediateAlertTemplatePro
           <Text style={paragraph}>
             A new high-value signal was detected for <strong>{founderName}</strong>.
           </Text>
-          
+
           <div style={card}>
             <Text style={signalType}>{type} (Score: {score}/10)</Text>
             <Text style={signalDesc}>{description}</Text>
           </div>
 
-          <Button style={button} href={`https://founderwatch.vercel.app/founders/`}>
+          <Button style={button} href={`https://founderwatch.vercel.app/founders/${founderId || ""}`}>
             View Profile
           </Button>
         </Section>

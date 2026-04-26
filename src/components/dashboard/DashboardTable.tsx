@@ -3,22 +3,24 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, MoreHorizontal } from "lucide-react";
+import { Search, MoreHorizontal, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { AddFounderModal } from "./AddFounderModal";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useState } from "react";
+import { toast } from "sonner";
 
 
 
 export function DashboardTable() {
   const router = useRouter();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -47,8 +49,27 @@ export function DashboardTable() {
         return timeB - timeA;
       });
     },
-    enabled: !!user?.email
+    enabled: !!user?.email,
+    refetchInterval: 20000
   });
+
+
+  const handleDeleteFounder = async (founderId: string) => {
+    try {
+      const response = await fetch(`/api/founders/${founderId}`, { method: "DELETE" });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || "Failed to delete founder");
+      }
+
+      toast.success("Founder deleted");
+      queryClient.invalidateQueries({ queryKey: ["founders"] });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete founder";
+      toast.error(message);
+    }
+  };
 
   const filteredFounders = founders?.filter((f) => {
     const matchesPriority = priorityFilter === "all" || f.priority === priorityFilter;
@@ -159,9 +180,22 @@ export function DashboardTable() {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
+                  <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); router.push(`/founders/${founder.id}`); }}>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFounder(founder.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
