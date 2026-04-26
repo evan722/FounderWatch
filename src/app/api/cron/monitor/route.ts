@@ -3,21 +3,37 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { scoreSignal } from "@/lib/openai";
-import { sendImmediateAlert } from "@/lib/resend";
+import { sendChangeAlert } from "@/lib/resend";
 import { fetchLinkedInSnapshot } from "@/lib/proxycurl";
 
-function isLinkedInUrl(url: string) {
+function isLinkedInUrl(url: string): boolean {
   return /linkedin\.com\/in\//i.test(url);
 }
 
-function normalizeValue(value: unknown) {
+function normalize(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
+/**
+ * GET /api/cron/monitor
+ *
+ * Scheduled daily at 00:00 UTC via vercel.json.
+ *
+ * For every founder with a linkedin_url:
+ *   1. If never enriched (no last_enriched_at) → store baseline, no signal.
+ *   2. If baseline exists → fetch current snapshot, diff role/company/headline.
+ *      • Any change → score with GPT-4o → save signal → email all assigned_emails
+ *        (regardless of score, since the monitor is the core value-add).
+ *      • Update stored values and last_enriched_at either way.
+ */
 export async function GET(req: Request) {
   try {
+    // Auth guard for production
     const authHeader = req.headers.get("authorization");
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (
+      process.env.CRON_SECRET &&
+      authHeader !== `Bearer ${process.env.CRON_SECRET}`
+    ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -25,50 +41,90 @@ export async function GET(req: Request) {
 
     const results = {
       scanned: 0,
-      monitored: 0,
-      updated: 0,
+      skipped: 0,      // No LinkedIn URL
+      baselined: 0,    // First run — stored baseline, no signal
+      unchanged: 0,    // Had baseline, nothing changed
       signalsCreated: 0,
+      emailsSent: 0,
       errors: 0,
     };
 
     for (const founderDoc of foundersSnapshot.docs) {
       results.scanned += 1;
-
       const founder = founderDoc.data();
-      const linkedinUrl = founder.linkedin_url || founder.url;
 
+      // Only process LinkedIn URLs
+      const linkedinUrl = (founder.linkedin_url || founder.url) as string | undefined;
       if (!linkedinUrl || !isLinkedInUrl(linkedinUrl)) {
+        results.skipped += 1;
         continue;
       }
 
-      results.monitored += 1;
-
       try {
         const snapshot = await fetchLinkedInSnapshot(linkedinUrl);
+        const hasBaseline = !!founder.last_enriched_at;
 
-        const previousRole = founder.role || "";
-        const previousCompany = founder.company || "";
-        const nextRole = snapshot.role || previousRole;
-        const nextCompany = snapshot.company || previousCompany;
-
-        const roleChanged = normalizeValue(nextRole) !== normalizeValue(previousRole);
-        const companyChanged = normalizeValue(nextCompany) !== normalizeValue(previousCompany);
-
-        if (!roleChanged && !companyChanged) {
+        if (!hasBaseline) {
+          // ── First time ───────────────────────────────────────────────────────
+          // Just store the initial state as the baseline. No signal, no email.
+          // The next cron run will diff against this.
+          await founderDoc.ref.update({
+            role: snapshot.role ?? null,
+            company: snapshot.company ?? null,
+            headline: snapshot.headline ?? null,
+            linkedin_photo_url: snapshot.photo_url ?? null,
+            last_enriched_at: new Date(),
+          });
+          results.baselined += 1;
+          console.log(`[MONITOR] Baseline stored for ${founderDoc.id} (${founder.name})`);
           continue;
         }
 
-        const descriptionParts = [];
+        // ── Diff against stored baseline ──────────────────────────────────────
+        const prevRole = (founder.role as string) || "";
+        const prevCompany = (founder.company as string) || "";
+        const prevHeadline = (founder.headline as string) || "";
+
+        const nextRole = snapshot.role || "";
+        const nextCompany = snapshot.company || "";
+        const nextHeadline = snapshot.headline || "";
+
+        const roleChanged = normalize(nextRole) !== normalize(prevRole) && !!nextRole;
+        const companyChanged = normalize(nextCompany) !== normalize(prevCompany) && !!nextCompany;
+        const headlineChanged = normalize(nextHeadline) !== normalize(prevHeadline) && !!nextHeadline;
+
+        // Always refresh the stored values and timestamp
+        await founderDoc.ref.update({
+          role: snapshot.role ?? founder.role ?? null,
+          company: snapshot.company ?? founder.company ?? null,
+          headline: snapshot.headline ?? founder.headline ?? null,
+          linkedin_photo_url: snapshot.photo_url ?? founder.linkedin_photo_url ?? null,
+          last_enriched_at: new Date(),
+        });
+
+        if (!roleChanged && !companyChanged && !headlineChanged) {
+          results.unchanged += 1;
+          continue;
+        }
+
+        // ── Build change description ──────────────────────────────────────────
+        const changes: string[] = [];
         if (roleChanged) {
-          descriptionParts.push(`Role changed from "${previousRole || "Unknown"}" to "${nextRole || "Unknown"}"`);
+          changes.push(`Role: "${prevRole || "Unknown"}" → "${nextRole}"`);
         }
         if (companyChanged) {
-          descriptionParts.push(`Company changed from "${previousCompany || "Unknown"}" to "${nextCompany || "Unknown"}"`);
+          changes.push(`Company: "${prevCompany || "Unknown"}" → "${nextCompany}"`);
+        }
+        if (headlineChanged) {
+          changes.push(`Headline: "${prevHeadline || "Unknown"}" → "${nextHeadline}"`);
         }
 
-        const description = descriptionParts.join(". ");
+        const description = changes.join(". ");
+
+        // ── Score with GPT-4o ────────────────────────────────────────────────
         const score = await scoreSignal(description, "Proxycurl LinkedIn Monitor");
 
+        // ── Save signal to Firestore ─────────────────────────────────────────
         await founderDoc.ref.collection("signals").add({
           founder_id: founderDoc.id,
           type: "linkedin_update",
@@ -78,38 +134,56 @@ export async function GET(req: Request) {
           created_at: new Date(),
         });
 
-        const updatedFounder = {
-          role: nextRole,
-          company: nextCompany,
-          priority: score >= 7 ? "high" : score >= 4 ? "medium" : "low",
+        // Update founder priority based on signal score
+        const priority = score >= 7 ? "high" : score >= 4 ? "medium" : "low";
+        await founderDoc.ref.update({
+          priority,
           updated_at: new Date(),
-        };
+        });
 
-        await founderDoc.ref.update(updatedFounder);
+        results.signalsCreated += 1;
+        console.log(
+          `[MONITOR] Signal created for ${founder.name} (score=${score}): ${description}`
+        );
 
-        if (score >= 7) {
-          const recipients = Array.isArray(founder.assigned_emails)
-            ? founder.assigned_emails.filter((email: unknown): email is string => typeof email === "string")
-            : [];
+        // ── Send email to ALL assigned owners (every change, not just high score) ──
+        const recipients = (
+          Array.isArray(founder.assigned_emails) ? founder.assigned_emails : []
+        ).filter((e: unknown): e is string => typeof e === "string");
 
-          await sendImmediateAlert({
-            founderId: founderDoc.id,
-            founderName: founder.name || "Unknown",
-            type: "LinkedIn Update",
-            description,
-            score,
-            recipients,
-          });
+        if (recipients.length > 0) {
+          try {
+            await sendChangeAlert({
+              founderId: founderDoc.id,
+              founderName: founder.name || "Unknown",
+              changes,
+              description,
+              score,
+              recipients,
+              source: "Proxycurl LinkedIn Monitor",
+            });
+            results.emailsSent += 1;
+            console.log(
+              `[MONITOR] Email sent for ${founder.name} to: ${recipients.join(", ")}`
+            );
+          } catch (emailErr) {
+            console.error(`[MONITOR] Email failed for ${founderDoc.id}:`, emailErr);
+            // Don't count as an error — signal is already saved
+          }
+        } else {
+          console.warn(
+            `[MONITOR] No recipients for founder ${founderDoc.id} — signal saved but no email sent`
+          );
         }
 
-        results.updated += 1;
-        results.signalsCreated += 1;
-      } catch (error) {
+
+      } catch (err) {
         results.errors += 1;
-        console.error(`[MONITOR] Failed for founder ${founderDoc.id}`, error);
+        console.error(`[MONITOR] Failed for founder ${founderDoc.id}:`, err);
       }
     }
 
+    console.log("[MONITOR] Run complete:", results);
     return NextResponse.json({ success: true, ...results });
   } catch (error) {
     console.error("Cron monitor error:", error);

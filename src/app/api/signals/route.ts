@@ -29,6 +29,16 @@ function normalizePayload(payload: IncomingSignalPayload) {
   };
 }
 
+/**
+ * POST /api/signals
+ *
+ * Ingests a signal from Clay (or any external source).
+ * 1. Normalises the flexible payload format
+ * 2. Scores the signal with GPT-4o
+ * 3. Saves the signal to the founder's signals subcollection
+ * 4. Updates the founder's priority
+ * 5. Sends an immediate email alert to all assigned_emails for score >= 7
+ */
 export async function POST(req: Request) {
   try {
     const payload = (await req.json()) as IncomingSignalPayload;
@@ -45,19 +55,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1) AI scoring
-    const score = await scoreSignal(normalized.description, normalized.source);
+    // 1) Score with AI
+    const score = await scoreSignal(normalized.description, normalized.source || "Clay");
 
-    // 2) Save signal
-    const signalData = {
-      founder_id: normalized.founderId,
-      type: normalized.type,
-      description: normalized.description,
-      relevance_score: score,
-      source: normalized.source,
-      created_at: new Date(),
-    };
-
+    // 2) Fetch founder to get name and assigned_emails
     const founderRef = adminDb.collection("founders").doc(normalized.founderId);
     const founderDoc = await founderRef.get();
 
@@ -68,25 +69,47 @@ export async function POST(req: Request) {
       );
     }
 
+    const founderData = founderDoc.data()!;
+
+    // 3) Save signal
+    const signalData = {
+      founder_id: normalized.founderId,
+      type: normalized.type,
+      description: normalized.description,
+      relevance_score: score,
+      source: normalized.source,
+      created_at: new Date(),
+    };
+
     const docRef = await founderRef.collection("signals").add(signalData);
 
-    // 3) Update founder summary status based on signal score
+    // 4) Update founder priority based on signal score
     const priority = score >= 7 ? "high" : score >= 4 ? "medium" : "low";
     await founderRef.update({
       priority,
       updated_at: new Date(),
     });
 
-    // 4) Immediate alert for high score signals
+    // 5) Immediate email for high-score signals — send to all assigned owners
     if (score >= 7) {
-      const founderName = founderDoc.data()?.name || "Unknown";
+      const recipients = (
+        Array.isArray(founderData.assigned_emails) ? founderData.assigned_emails : []
+      ).filter((e: unknown): e is string => typeof e === "string");
+
+      const founderName = (founderData.name as string) || "Unknown";
+
       await sendImmediateAlert({
+        founderId: founderDoc.id,
         founderName,
         type: normalized.type,
         description: normalized.description,
         score,
+        recipients,
       });
-      console.log(`[ALERT] Immediate email for ${founderName} (score=${score})`);
+
+      console.log(
+        `[SIGNALS] Immediate alert sent for ${founderName} (score=${score}) to: ${recipients.join(", ")}`
+      );
     }
 
     return NextResponse.json({ success: true, id: docRef.id, score });
