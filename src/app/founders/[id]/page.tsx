@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ArrowLeft, Clock, MessageSquare, Globe } from "lucide-react";
 import Link from "next/link";
@@ -84,12 +84,10 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
   if (!founder) {
     return (
       <div className="p-8 max-w-6xl mx-auto space-y-6">
-        <Button variant="ghost" asChild className="-ml-4 mb-4 text-muted-foreground hover:text-foreground">
-          <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Link>
-        </Button>
+        <Link href="/" className={buttonVariants({ variant: "ghost", className: "-ml-4 mb-4 text-muted-foreground hover:text-foreground" })}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Dashboard
+        </Link>
         <div className="text-center py-20 text-muted-foreground">Founder not found</div>
       </div>
     );
@@ -98,12 +96,10 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-6 h-full flex flex-col">
       <div>
-        <Button variant="ghost" asChild className="-ml-4 mb-4 text-muted-foreground hover:text-foreground">
-          <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Link>
-        </Button>
+        <Link href="/" className={buttonVariants({ variant: "ghost", className: "-ml-4 mb-4 text-muted-foreground hover:text-foreground" })}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Dashboard
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
@@ -129,11 +125,9 @@ export default function FounderProfilePage({ params }: { params: { id: string } 
             </div>
             
             <div className="flex gap-2 mb-6">
-              <Button variant="outline" size="icon" className="h-8 w-8" asChild>
-                <a href={founder.url} target="_blank" rel="noopener noreferrer">
-                  <Globe className="h-4 w-4" />
-                </a>
-              </Button>
+              <a href={founder.url} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "outline", size: "icon", className: "h-8 w-8" })}>
+                <Globe className="h-4 w-4" />
+              </a>
             </div>
 
             <div className="space-y-4 text-sm">
